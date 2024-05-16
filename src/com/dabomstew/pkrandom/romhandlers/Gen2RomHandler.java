@@ -103,7 +103,9 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
     }
 
     @Override
-    protected void handlePostGameEncounterSpecialCase(Set<Pokemon> addTo, EncounterSet area, boolean useTimeOfDay) {
+    protected EncounterSet getSpecialCaseMainGameEncounters(EncounterSet area, boolean useTimeOfDay) {
+        EncounterSet mainGameEncounters = new EncounterSet();
+
         //in this generation, the special case is fishing groups
         //(because the Super Rod is obtained post-game)
 
@@ -129,56 +131,45 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
             if(pokeIndex > numMainGame) {
                 break;
             }
-            addTo.add(enc.pokemon);
+            mainGameEncounters.encounters.add(enc);
         }
+
+        return mainGameEncounters;
     }
 
     @Override
-    protected void printPostGameEncounterAreaSpecialCases(PrintStream output) {
+    protected EncounterSet getSpecialCasePostGameEncounters(EncounterSet area, boolean useTimeOfDay) {
+        EncounterSet postGameEncounters = new EncounterSet();
 
-        int[] specialCases;
+        //in this generation, the special case is fishing groups
+        //(because the Super Rod is obtained post-game)
 
-        output.println("With TOD:");
-        if(romEntry.isCrystal) {
-            specialCases = Gen2Constants.crysPostGameSpecialCasesTOD;
-        } else {
-            specialCases = Gen2Constants.gsPostGameSpecialCasesTOD;
-        }
+        //There are three cases here, each with different numbers of non-Super Rod fish:
+        //if not using TOD, 7 fish
+        //if using TOD and main group, 6 fish
+        //if using TOD and time-dependent group, 2 fish
 
-        List<EncounterSet> allEncs = getEncounters(true);
-        for(int encNum : specialCases) {
-            EncounterSet area = allEncs.get(encNum);
-
-            output.println(encNum + " " + area.displayName);
-            for (Encounter enc : area.encounters) {
-                if(enc.maxLevel != 0) {
-                    output.println("    " + enc.pokemon.name + " (" + enc.level + "-" + enc.maxLevel + ")");
-                } else {
-                    output.println("    " + enc.pokemon.name + " (" + enc.level + ")");
-                }
+        int numMainGame;
+        if(useTimeOfDay) {
+            if(area.displayName.startsWith("Time")) {
+                numMainGame = 2;
+            } else {
+                numMainGame = 6;
             }
-        }
-
-        output.println("No TOD:");
-        if(romEntry.isCrystal) {
-            specialCases = Gen2Constants.crysPostGameSpecialCasesNoTOD;
         } else {
-            specialCases = Gen2Constants.gsPostGameSpecialCasesNoTOD;
+            numMainGame = 7;
         }
-        allEncs = getEncounters(false);
-        for(int encNum : specialCases) {
-            EncounterSet area = allEncs.get(encNum);
 
-            output.println(encNum + " " + area.displayName);
-            for (Encounter enc : area.encounters) {
-                if(enc.maxLevel != 0) {
-                    output.println("    " + enc.pokemon.name + " (" + enc.level + "-" + enc.maxLevel + ")");
-                } else {
-                    output.println("    " + enc.pokemon.name + " (" + enc.level + ")");
-                }
+        int pokeIndex = 0;
+        for (Encounter enc : area.encounters) {
+            pokeIndex++;
+            if(pokeIndex <= numMainGame) {
+                continue;
             }
+            postGameEncounters.encounters.add(enc);
         }
 
+        return postGameEncounters;
     }
 
     @Override

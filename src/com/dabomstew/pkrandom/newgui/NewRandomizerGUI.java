@@ -735,7 +735,7 @@ public class NewRandomizerGUI {
 
         //TODO: remove after finished
         postGameCodeCreatorMenuItem = new JMenuItem();
-        postGameCodeCreatorMenuItem.setText("Output post-game encounter area codes");
+        postGameCodeCreatorMenuItem.setText("Verify post-game encounter area codes");
         settingsMenu.add(postGameCodeCreatorMenuItem);
     }
 

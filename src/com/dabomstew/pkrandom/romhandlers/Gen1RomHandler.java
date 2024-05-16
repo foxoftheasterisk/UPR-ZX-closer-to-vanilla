@@ -1413,8 +1413,13 @@ public class Gen1RomHandler extends AbstractGBCRomHandler {
     }
 
     @Override
-    protected void handlePostGameEncounterSpecialCase(Set<Pokemon> addTo, EncounterSet area, boolean useTimeOfDay) {
-        //no special cases
+    protected EncounterSet getSpecialCaseMainGameEncounters(EncounterSet area, boolean useTimeOfDay) {
+        return null; //no special cases
+    }
+
+    @Override
+    protected EncounterSet getSpecialCasePostGameEncounters(EncounterSet area, boolean useTimeOfDay) {
+        return null;
     }
 
     @Override

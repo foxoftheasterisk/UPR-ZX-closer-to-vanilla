@@ -102,7 +102,9 @@ public class Gen4RomHandler extends AbstractDSRomHandler {
     }
 
     @Override
-    protected void handlePostGameEncounterSpecialCase(Set<Pokemon> addTo, EncounterSet area, boolean useTimeOfDay) {
+    protected EncounterSet getSpecialCaseMainGameEncounters(EncounterSet area, boolean useTimeOfDay) {
+        EncounterSet mainGameEncounters = new EncounterSet();
+
         //our only special case in this generation is HGSS headbutt trees
         //and in each case they appear, the first 12 are local and the last 6 are not
         int pokeIndex = 0;
@@ -111,8 +113,26 @@ public class Gen4RomHandler extends AbstractDSRomHandler {
             if(pokeIndex > 12) {
                 break;
             }
-            addTo.add(enc.pokemon);
+            mainGameEncounters.encounters.add(enc);
         }
+        return mainGameEncounters;
+    }
+
+    @Override
+    protected EncounterSet getSpecialCasePostGameEncounters(EncounterSet area, boolean useTimeOfDay) {
+        EncounterSet postGameEncounters = new EncounterSet();
+
+        //our only special case in this generation is HGSS headbutt trees
+        //and in each case they appear, the first 12 are local and the last 6 are not
+        int pokeIndex = 0;
+        for (Encounter enc : area.encounters) {
+            pokeIndex++;
+            if(pokeIndex <= 12) {
+                continue;
+            }
+            postGameEncounters.encounters.add(enc);
+        }
+        return postGameEncounters;
     }
 
     //TODO: remove when finished
@@ -128,45 +148,6 @@ public class Gen4RomHandler extends AbstractDSRomHandler {
         }
 
         return postGameAreas;
-    }
-
-    //TODO: remove when finished
-    @Override
-    protected void printPostGameEncounterAreaSpecialCases(PrintStream output) {
-        if(romEntry.romType != Gen4Constants.Type_HGSS) {
-            return; //DPPt don't have special cases to print
-        }
-
-        output.println("With TOD:");
-        List<EncounterSet> allEncs = getEncounters(true);
-        for(int encNum : Gen4Constants.hgssPostGameSpecialCasesTOD) {
-            EncounterSet area = allEncs.get(encNum);
-
-            output.println(encNum + " " + area.displayName);
-            for (Encounter enc : area.encounters) {
-                if(enc.maxLevel != 0) {
-                    output.println("    " + enc.pokemon.name + " (" + enc.level + "-" + enc.maxLevel + ")");
-                } else {
-                    output.println("    " + enc.pokemon.name + " (" + enc.level + ")");
-                }
-            }
-        }
-
-        output.println("No TOD:");
-        allEncs = getEncounters(false);
-        for(int encNum : Gen4Constants.hgssPostGameSpecialCasesNoTOD) {
-            EncounterSet area = allEncs.get(encNum);
-
-            output.println(encNum + " " + area.displayName);
-            for (Encounter enc : area.encounters) {
-                if(enc.maxLevel != 0) {
-                    output.println("    " + enc.pokemon.name + " (" + enc.level + "-" + enc.maxLevel + ")");
-                } else {
-                    output.println("    " + enc.pokemon.name + " (" + enc.level + ")");
-                }
-            }
-        }
-
     }
 
     private static class RomFileEntry {

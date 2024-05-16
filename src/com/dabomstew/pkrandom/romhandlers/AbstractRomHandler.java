@@ -6591,7 +6591,7 @@ public abstract class AbstractRomHandler implements RomHandler {
             } else if (specialCases != null && areaIndex == specialCases[scIndex]) {
 
                 //add some - determined by gen-specific method
-                handlePostGameEncounterSpecialCase(wildPokemon, area, useTimeOfDay);
+                getSpecialCaseMainGamePokemon(wildPokemon, area, useTimeOfDay);
 
                 //also, advance to next special case
                 scIndex++;
@@ -6613,7 +6613,15 @@ public abstract class AbstractRomHandler implements RomHandler {
 
     protected abstract int[] getPostGameEncounterAreas(boolean useTimeOfDay);
     protected abstract int[] getPostGameEncounterSpecialCases(boolean useTimeOfDay);
-    protected abstract void handlePostGameEncounterSpecialCase(Set<Pokemon> addTo, EncounterSet area, boolean useTimeOfDay);
+    private void getSpecialCaseMainGamePokemon(Set<Pokemon> addTo, EncounterSet area, boolean useTimeOfDay) {
+        EncounterSet mainGameEncounters = getSpecialCaseMainGameEncounters(area, useTimeOfDay);
+
+        for(Encounter enc : mainGameEncounters.encounters) {
+            addTo.add(enc.pokemon);
+        }
+    }
+    protected abstract EncounterSet getSpecialCaseMainGameEncounters(EncounterSet area, boolean useTimeOfDay);
+    protected abstract EncounterSet getSpecialCasePostGameEncounters(EncounterSet area, boolean useTimeOfDay);
 
     private Map<Type, Integer> typeWeightings;
     private int totalTypeWeighting;
@@ -7669,6 +7677,7 @@ public abstract class AbstractRomHandler implements RomHandler {
     @Override
     public void printPostGameEncounterAreas(PrintStream output) {
         String[] postGameNames = getPostGameStringList();
+
         List<EncounterSet> areasUseTOD = getEncounters(true);
         List<EncounterSet> areasNoTOD = getEncounters(false);
 
@@ -7680,95 +7689,220 @@ public abstract class AbstractRomHandler implements RomHandler {
         if(areasUseTOD != null) {
             output.println("Time-of-day areas: ");
 
-            printPostGameEncounterAreas(output, areasUseTOD, postGameNames);
+            printPostGameEncounterAreas(output, areasUseTOD, true, postGameNames);
 
             output.println("Non-time-of-day areas: ");
         } else {
             output.println("No time of day. Areas: ");
         }
 
-        printPostGameEncounterAreas(output, areasNoTOD, postGameNames);
+        printPostGameEncounterAreas(output, areasNoTOD, false, postGameNames);
 
         output.println();
-
-        printPostGameEncounterAreaSpecialCases(output);
     }
 
-    private void printPostGameEncounterAreas(PrintStream output, List<EncounterSet> areas, String[] postGameNames) {
-        Map<String, List<Integer>> postGameAreas = new HashMap<>();
+    private void printPostGameEncounterAreas(PrintStream output, List<EncounterSet> areas, boolean useTimeOfDay, String[] postGameNames) {
+        Map<Integer, EncounterSet> postGameAreas = new TreeMap<>();
         Map<Integer, EncounterSet> nonPostGameAreas = new TreeMap<>();
+        Map<Integer, EncounterSet> specialCases = new TreeMap<>();
 
-        int index = 0;
-        for (EncounterSet area : areas) {
-            boolean isPostGame = false;
-            for (String name : postGameNames) {
-                if(area.displayName.contains(name)) {
-                    if(!postGameAreas.containsKey(name)) {
-                        //create it
-                        postGameAreas.put(name, new ArrayList<>());
-                    }
-                    postGameAreas.get(name).add(index);
-                    isPostGame = true;
-                    break;
-                }
-            }
+        int[] postGameAreaCodes = getPostGameEncounterAreas(useTimeOfDay);
+        int[] postGameSpecialCaseCodes = getPostGameEncounterSpecialCases(useTimeOfDay);
 
-            if(!isPostGame) {
-                nonPostGameAreas.put(index, area);
-            }
-
-            index++;
+        if(postGameAreaCodes != null) {
+            Arrays.sort(postGameAreaCodes);
+        }
+        if(postGameSpecialCaseCodes != null) {
+            Arrays.sort(postGameSpecialCaseCodes);
         }
 
-        //categorized. now, we print.
-        output.println("Post game areas: ");
-        for (String name : postGameNames) {
-            if(postGameAreas.containsKey(name)) {
-                List<Integer> matchingAreas = postGameAreas.get(name);
-                for(Integer area : matchingAreas) {
-                    output.print(area.toString() + ", ");
+        int pgaIndex = 0;
+        int scIndex = 0;
+
+        for(int areaIndex = 0; areaIndex < areas.size(); areaIndex++) {
+            if(postGameAreaCodes != null && areaIndex == postGameAreaCodes[pgaIndex]) {
+                postGameAreas.put(areaIndex, areas.get(areaIndex));
+                pgaIndex++;
+                if(pgaIndex == postGameAreaCodes.length) {
+                    pgaIndex = 0;
                 }
-                output.println("//" + name);
+            } else if (postGameSpecialCaseCodes != null && areaIndex == postGameSpecialCaseCodes[scIndex]) {
+                specialCases.put(areaIndex, areas.get(areaIndex));
+                scIndex++;
+                if(scIndex == postGameSpecialCaseCodes.length) {
+                    scIndex = 0;
+                }
             } else {
-                output.println("//No areas match " + name);
+                nonPostGameAreas.put(areaIndex, areas.get(areaIndex));
             }
         }
 
-        output.println();
-        output.println("Non post game areas: ");
-        Set<Integer> nonPostGameKeys = nonPostGameAreas.keySet();
-        for(Integer area : nonPostGameKeys)
+        if(!specialCases.isEmpty())
         {
-            EncounterSet encInArea = nonPostGameAreas.get(area);
-            output.println(area + " " + encInArea.displayName);
+            output.println("Special cases:");
+            Set<Integer> specialCaseKeys = specialCases.keySet();
+            for(Integer area : specialCaseKeys) {
+                EncounterSet encInArea = specialCases.get(area);
+                output.print(area + " " + encInArea.displayName + ": ");
 
-            Set<Pokemon> pokeInArea = pokemonInArea(encInArea);
-            output.print("     ");
-            for (Pokemon poke : pokeInArea) {
-                output.print(poke.name + ", ");
-            }
+                for(String match : postGameNames) {
+                    if(encInArea.displayName.contains(match)) {
+                        output.print("Matches " + match + "; ");
+                    }
+                }
 
-            int minLevel = 100;
-            int maxLevel = 0;
-            for(Encounter enc : encInArea.encounters) {
-                if(enc.level < minLevel) {
-                    minLevel = enc.level;
+                EncounterSet mainGameEncounters = getSpecialCaseMainGameEncounters(encInArea, useTimeOfDay);
+                EncounterSet postGameEncounters = getSpecialCasePostGameEncounters(encInArea, useTimeOfDay);
+
+                Set<Pokemon> mainGamePokes = pokemonInArea(mainGameEncounters);
+                Set<Pokemon> postGamePokes = pokemonInArea(postGameEncounters);
+
+                output.println();
+                output.print("Main game: ");
+                for (Pokemon poke : mainGamePokes) {
+                    output.print(poke.name + ", ");
                 }
-                if(enc.maxLevel > maxLevel) {
-                    maxLevel = enc.maxLevel;
-                } else if (enc.level > maxLevel) {
-                    maxLevel = enc.level;
+
+                int minLevel = 100;
+                int maxLevel = 0;
+                for(Encounter enc : mainGameEncounters.encounters) {
+                    if(enc.level < minLevel) {
+                        minLevel = enc.level;
+                    }
+                    if(enc.maxLevel > maxLevel) {
+                        maxLevel = enc.maxLevel;
+                    } else if (enc.level > maxLevel) {
+                        maxLevel = enc.level;
+                    }
                 }
+                output.println("levels " + minLevel + "-" + maxLevel);
+
+                output.print("Post game: ");
+                for (Pokemon poke : postGamePokes) {
+                    output.print(poke.name + ", ");
+                }
+
+                minLevel = 100;
+                maxLevel = 0;
+                for(Encounter enc : postGameEncounters.encounters) {
+                    if(enc.level < minLevel) {
+                        minLevel = enc.level;
+                    }
+                    if(enc.maxLevel > maxLevel) {
+                        maxLevel = enc.maxLevel;
+                    } else if (enc.level > maxLevel) {
+                        maxLevel = enc.level;
+                    }
+                }
+                output.println("levels " + minLevel + "-" + maxLevel);
             }
-            output.println("levels " + minLevel + "-" + maxLevel);
+            output.println();
         }
 
-        output.println();
-    }
+        if(!postGameAreas.isEmpty())
+        {
+            output.println("Post game areas:");
+            Set<Integer> pgaKeys = postGameAreas.keySet();
+            for(Integer area : pgaKeys) {
+                EncounterSet encInArea = postGameAreas.get(area);
+                output.print(area + " " + encInArea.displayName + ": ");
 
-    protected void printPostGameEncounterAreaSpecialCases(PrintStream output) {
+                for(String match : postGameNames) {
+                    if(encInArea.displayName.contains(match)) {
+                        output.print("Matches " + match + "; ");
+                    }
+                }
+
+                Set<Pokemon> pokeInArea = pokemonInArea(encInArea);
+                output.print("     ");
+                for (Pokemon poke : pokeInArea) {
+                    output.print(poke.name + ", ");
+                }
+
+                int minLevel = 100;
+                int maxLevel = 0;
+                for(Encounter enc : encInArea.encounters) {
+                    if(enc.level < minLevel) {
+                        minLevel = enc.level;
+                    }
+                    if(enc.maxLevel > maxLevel) {
+                        maxLevel = enc.maxLevel;
+                    } else if (enc.level > maxLevel) {
+                        maxLevel = enc.level;
+                    }
+                }
+                output.println("levels " + minLevel + "-" + maxLevel);
+            }
+            output.println();
+        }
+
+        if(!nonPostGameAreas.isEmpty())
+        {
+            output.println("Main game areas:");
+            Set<Integer> pgaKeys = nonPostGameAreas.keySet();
+            for(Integer area : pgaKeys) {
+                EncounterSet encInArea = nonPostGameAreas.get(area);
+                output.print(area + " " + encInArea.displayName + ": ");
+
+                for(String match : postGameNames) {
+                    if(encInArea.displayName.contains(match)) {
+                        output.print("Matches " + match + "; ");
+                    }
+                }
+
+                Set<Pokemon> pokeInArea = pokemonInArea(encInArea);
+                output.print("     ");
+                for (Pokemon poke : pokeInArea) {
+                    output.print(poke.name + ", ");
+                }
+
+                int minLevel = 100;
+                int maxLevel = 0;
+                for(Encounter enc : encInArea.encounters) {
+                    if(enc.level < minLevel) {
+                        minLevel = enc.level;
+                    }
+                    if(enc.maxLevel > maxLevel) {
+                        maxLevel = enc.maxLevel;
+                    } else if (enc.level > maxLevel) {
+                        maxLevel = enc.level;
+                    }
+                }
+                output.println("levels " + minLevel + "-" + maxLevel);
+            }
+            output.println();
+        }
 
     }
 
     abstract protected String[] getPostGameStringList();
+
+    private void printEncounterAreaBrief(PrintStream output, EncounterSet toPrint, String[] matchAgainstName) {
+        output.print(toPrint.displayName + ":");
+        for(String match : matchAgainstName) {
+            if(toPrint.displayName.contains(match)) {
+                output.print("Matches " + match + "; ");
+            }
+        }
+
+        Set<Pokemon> pokeInArea = pokemonInArea(toPrint);
+        output.print("     ");
+        for (Pokemon poke : pokeInArea) {
+            output.print(poke.name + ", ");
+        }
+
+        int minLevel = 100;
+        int maxLevel = 0;
+        for(Encounter enc : toPrint.encounters) {
+            if(enc.level < minLevel) {
+                minLevel = enc.level;
+            }
+            if(enc.maxLevel > maxLevel) {
+                maxLevel = enc.maxLevel;
+            } else if (enc.level > maxLevel) {
+                maxLevel = enc.level;
+            }
+        }
+        output.println("levels " + minLevel + "-" + maxLevel);
+    }
 }

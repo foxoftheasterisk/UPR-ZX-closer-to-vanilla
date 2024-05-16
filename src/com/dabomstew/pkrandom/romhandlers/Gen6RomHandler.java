@@ -80,8 +80,13 @@ public class Gen6RomHandler extends Abstract3DSRomHandler {
     }
 
     @Override
-    protected void handlePostGameEncounterSpecialCase(Set<Pokemon> addTo, EncounterSet area, boolean useTimeOfDay) {
-        //no special cases
+    protected EncounterSet getSpecialCaseMainGameEncounters(EncounterSet area, boolean useTimeOfDay) {
+        return null; //no special cases
+    }
+
+    @Override
+    protected EncounterSet getSpecialCasePostGameEncounters(EncounterSet area, boolean useTimeOfDay) {
+        return null; //no special cases
     }
 
     protected String[] getPostGameStringList() {

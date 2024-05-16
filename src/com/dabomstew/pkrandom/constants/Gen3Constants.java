@@ -566,7 +566,6 @@ public class Gen3Constants {
             "FIVE ISLAND", "RESORT GORGEOUS", "LOST CAVE", "WATER LABYRINTH", "FIVE ISLE MEADOW", "ROCKET WAREHOUSE", "MEMORIAL PILLAR",
             "SIX ISLAND", "WATER PATH", "RUIN VALLEY", "DOTTED HOLE", "GREEN PATH", "PATTERN BUSH", "OUTCAST ISLAND", "ALTERING CAVE",
             "SEVEN ISLAND", "TANOBY RUINS", "TANOBY CHAMBERS", "SEVAULT CANYON", "TANOBY KEY", "CANYON ENTRANCE", "TRAINER TOWER"
-            //also some of the Sevii Islands...
     };
 
     public static String[] rsePostGameEncounterNames = new String[] {
